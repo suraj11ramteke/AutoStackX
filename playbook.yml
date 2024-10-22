@@ -34,7 +34,7 @@
         cd /opt/SpringBootReactApp/frontend
         npm install
         npm run build
-        sudo cp -r build/* /var/www/html/
+        sudo cp -r build/* /var/www/html/myweb/
 
     - name: Configure Nginx
       template:
