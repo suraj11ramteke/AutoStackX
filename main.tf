@@ -8,7 +8,7 @@ variable "instance_type" {
 }
 
 resource "aws_instance" "web" {
-  ami           = "ami-0dee22c13ea7a9a67"  # Ubuntu 22.04 Image
+  ami           = "ami-0866a3c8686eaeeba"  # Ubuntu 24.04 Image
   instance_type = var.instance_type
 
   tags = {
