@@ -15,7 +15,7 @@ resource "aws_instance" "web" {
     Name = "SpringBootReactApp"
   }
 
-  key_name      = "devops-practices"
+  key_name      = "nama-devops"
   security_groups = [aws_security_group.web_sg.name]
 }
 
