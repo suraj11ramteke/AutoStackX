@@ -1,0 +1,47 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        update_cache: yes
+      with_items:
+        - openjdk-17-jdk
+        - nginx
+        - postgresql
+
+    - name: Clone Spring Boot app from GitHub
+      git:
+        repo: 'https://github.com/namdeopawar/Simple-SpringBoot-ReactApp.git'
+        dest: /opt/SpringBootReactApp
+        version: main
+
+    - name: Configure PostgreSQL
+      shell: |
+        sudo -u postgres psql -c "CREATE DATABASE testdb;"
+        sudo -u postgres psql -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+
+    - name: Start Spring Boot backend
+      shell: |
+        cd /opt/SpringBootReactApp/backend
+        ./mvnw spring-boot:run &
+
+    - name: Deploy React frontend
+      shell: |
+        cd /opt/SpringBootReactApp/frontend
+        npm install
+        npm run build
+        sudo cp -r build/* /var/www/html/
+
+    - name: Configure Nginx
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/sites-available/default
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
