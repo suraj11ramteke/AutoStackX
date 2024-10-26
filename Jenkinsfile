@@ -35,6 +35,32 @@ pipeline {
                 }
             }
         }
+        stage('Wait for SSH') {
+            steps {
+                script {
+                    // Wait for the instance to be reachable via SSH
+                    def maxAttempts = 30
+                    def attempt = 0
+                    def sshCommand = "ssh -o StrictHostKeyChecking=no -i /var/lib/jenkins/.ssh/devops-practices.pem ubuntu@${env.INSTANCE_PUBLIC_IP} exit"
+
+                    while (attempt < maxAttempts) {
+                        try {
+                            sh sshCommand
+                            echo "SSH is reachable."
+                            break
+                        } catch (Exception e) {
+                            echo "Attempt ${attempt + 1}: SSH not reachable yet. Waiting..."
+                            sleep(10) // Wait for 10 seconds before retrying
+                            attempt++
+                        }
+                    }
+
+                    if (attempt == maxAttempts) {
+                        error "SSH was not reachable after ${maxAttempts * 10} seconds."
+                    }
+                }
+            }
+        }
         stage('Ansible Deploy') {
             steps {
                 // Update the inventory file with the public IP

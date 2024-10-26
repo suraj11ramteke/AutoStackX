@@ -31,7 +31,6 @@ resource "aws_instance" "web" {
               #!/bin/bash
               apt update
               apt install -y python3 python3-pip
-              pip3 install ansible
               apt install -y openjdk-17-jdk nginx postgresql git maven nodejs npm
               EOF
 }
