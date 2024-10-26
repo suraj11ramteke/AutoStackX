@@ -11,26 +11,37 @@ pipeline {
     }
 
     stages {
-        stage('Terraform Init & Apply') {
+        stage('Terraform Init') {
             steps {
                 script {
-                    // Pass instance_type and ami_id as parameters
                     sh 'terraform init'
-                    sh "terraform apply -auto-approve -var \"instance_type=${params.INSTANCE_TYPE}\" -var \"ami_id=${params.AMI_ID}\""
-                    sh 'terraform output instance_ip > instance_ip.txt'
                 }
             }
         }
-
-        stage('Ansible Provisioning') {
+        stage('Terraform Apply') {
             steps {
                 script {
-                    sh 'cat instance_ip.txt'
-                    sh './inventory.sh'
-                    ansiblePlaybook(
-                        playbook: 'playbook.yml',
-                        inventory: 'hosts.ini'
-                    )
+                    // Use the parameters for instance type and AMI ID
+                    sh "terraform apply -auto-approve -var instance_type=${params.INSTANCE_TYPE} -var ami_id=${params.AMI_ID}"
+                }
+            }
+        }
+        stage('Get Public IP') {
+            steps {
+                script {
+                    // Capture the public IP output from Terraform
+                    def publicIp = sh(script: "terraform output -raw instance_ip", returnStdout: true).trim()
+                    env.INSTANCE_PUBLIC_IP = publicIp
+                }
+            }
+        }
+        stage('Ansible Deploy') {
+            steps {
+                // Update the inventory file with the public IP
+                script {
+                    sh "echo '[app_servers]' > inventory"
+                    sh "echo '${env.INSTANCE_PUBLIC_IP} ansible_ssh_user=ubuntu ansible_ssh_private_key_file=/path/to/your/private/key.pem' >> inventory"
+                    sh 'ansible-playbook -i inventory deploy.yml'
                 }
             }
         }
