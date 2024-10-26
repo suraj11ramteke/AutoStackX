@@ -27,14 +27,6 @@ resource "aws_instance" "web" {
     Name = "SpringBootReactApp"
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              apt update
-              apt install -y python3 python3-pip
-              apt install -y openjdk-17-jdk nginx postgresql git maven nodejs npm
-              EOF
-}
-
 resource "aws_security_group" "web_sg" {
   name_prefix = "web-sg"
 
