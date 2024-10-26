@@ -20,13 +20,20 @@ variable "key_name" {
 resource "aws_instance" "web" {
   ami           = var.ami_id
   instance_type = var.instance_type
+  key_name      = var.key_name
+  security_groups = [aws_security_group.web_sg.name]
 
   tags = {
     Name = "SpringBootReactApp"
   }
 
-  key_name      = var.key_name
-  security_groups = [aws_security_group.web_sg.name]
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update
+              apt install -y python3 python3-pip
+              pip3 install ansible
+              apt install -y openjdk-17-jdk nginx postgresql git maven nodejs npm
+              EOF
 }
 
 resource "aws_security_group" "web_sg" {
@@ -60,6 +67,7 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
 output "instance_ip" {
   value = aws_instance.web.public_ip
 }
