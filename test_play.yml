@@ -5,19 +5,6 @@
   vars:
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   tasks:
-
-    - name: Install Python and pip
-      apt:
-        name: 
-          - python3
-          - python3-pip
-        state: present
-
-    - name: Install Ansible
-      pip:
-        name: ansible
-        state: present
-
     - name: Install required packages
       apt:
         name: 
