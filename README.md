@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project provides an automated deployment setup for a Spring Boot application with a React frontend. It utilizes **Jenkins** for continuous integration and continuous deployment (CI/CD), **Ansible** for configuration management, and **Terraform** for infrastructure provisioning. This setup ensures a smooth and efficient deployment process on a target server.
+This project provides an automated deployment setup for a Spring Boot application with a React frontend. It utilizes **Jenkins** for continuous integration and continuous deployment (CI/CD), **Ansible** for configuration management, and **Terraform** for infrastructure provisioning. This setup ensures a smooth and efficient deployment process on an AWS EC2 instance.
 
 ## Table of Contents
 
@@ -13,6 +13,8 @@ This project provides an automated deployment setup for a Spring Boot applicatio
 - [Usage](#usage)
 - [Jenkins Integration](#jenkins-integration)
 - [Terraform Setup](#terraform-setup)
+- [Ansible Playbook](#ansible-playbook)
+- [Nginx Configuration](#nginx-configuration)
 - [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
@@ -46,80 +48,109 @@ Before you begin, ensure you have met the following requirements:
 
 1. **Ansible Inventory**
 
-   Update the Ansible inventory file to include your target server's IP address or hostname. This file is typically located at `inventory/hosts`.
+   Update the Ansible inventory file to include your target server's IP address or hostname. This file is typically generated dynamically during the Jenkins pipeline execution.
 
-   ```ini
-   [all]
-   your_server_ip_or_hostname
-   ```
+2. **Terraform Configuration**
 
-2. **PostgreSQL Configuration**
-
-   The playbook includes tasks to create a PostgreSQL database and user. You can modify the database name and user credentials in the `deploy.yml` file.
-
-3. **Terraform Configuration**
-
-   Create a `main.tf` file in the root of your project to define your infrastructure. Here’s a basic example for provisioning an EC2 instance on AWS:
+   Update the `main.tf` file to define your infrastructure. The default configuration provisions an EC2 instance with a security group allowing SSH, HTTP, and application traffic.
 
    ```hcl
    provider "aws" {
-     region = "us-west-2"
+     region = "ap-south-1"
    }
 
-   resource "aws_instance" "app_server" {
-     ami           = "ami-0c55b159cbfafe1f0" # Replace with your desired AMI
-     instance_type = "t2.micro"
+   variable "instance_type" {
+     description = "Type of EC2 instance"
+     default     = "t2.medium"
+   }
+
+   variable "ami_id" {
+     description = "AMI ID for the EC2 instance"
+     default     = "ami-0dee22c13ea7a9a67"  // Default Ubuntu 20.04 Image
+   }
+
+   variable "key_name" {
+     description = "Key name for the EC2 instance"
+     default     = "devops-practices"
+   }
+
+   resource "aws_instance" "web" {
+     ami           = var.ami_id
+     instance_type = var.instance_type
+     key_name      = var.key_name
+     security_groups = [aws_security_group.web_sg.name]
 
      tags = {
        Name = "SpringBootReactApp"
      }
    }
-   ```
 
-   Adjust the AMI and instance type as necessary for your needs.
+   resource "aws_security_group" "web_sg" {
+     name_prefix = "web-sg"
+
+     ingress {
+       from_port   = 22
+       to_port     = 22
+       protocol    = "tcp"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+
+     ingress {
+       from_port   = 80
+       to_port     = 80
+       protocol    = "tcp"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+
+     ingress {
+       from_port   = 8080
+       to_port     = 8080
+       protocol    = "tcp"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+
+     egress {
+       from_port   = 0
+       to_port     = 0
+       protocol    = "-1"
+       cidr_blocks = ["0.0.0.0/0"]
+     }
+   }
+
+   output "instance_ip" {
+     value = aws_instance.web.public_ip
+   }
+   ```
 
 ## Deployment
 
-To deploy the application, run the following commands from the root of the project directory:
+To deploy the application, follow these steps:
 
-1. **Provision Infrastructure with Terraform**
+1. **Run the Jenkins Pipeline**
 
-   ```bash
-   terraform init
-   terraform apply
-   ```
+   The Jenkins pipeline defined in the `Jenkinsfile` automates the entire deployment process. It performs the following stages:
 
-   This command will provision the necessary infrastructure as defined in your `main.tf` file.
+   - **Terraform Init**: Initializes Terraform.
+   - **Terraform Apply**: Provisions the EC2 instance using the specified AMI and instance type.
+   - **Get Public IP**: Captures the public IP of the newly created instance.
+   - **Wait for SSH**: Waits until the instance is reachable via SSH.
+   - **Ansible Deploy**: Runs the Ansible playbook to configure the server and deploy the application.
 
-2. **Run the Ansible Playbook**
-
-   After provisioning, run the Ansible playbook to deploy the application:
-
-   ```bash
-   ansible-playbook -i inventory/hosts deploy.yml
-   ```
-
-   This command will execute the Ansible playbook, which performs the following tasks:
-
-   - Installs required packages (Java, Nginx, PostgreSQL, etc.).
-   - Configures PostgreSQL with a new database and user.
-   - Clones the Spring Boot application from GitHub.
-   - Runs the Spring Boot application.
-   - Unzips the React frontend and configures Nginx.
+   You can trigger the Jenkins job manually or set it to run automatically on code changes.
 
 ## Usage
 
 Once the deployment is complete, you can access the application via your web browser at:
 
 ```
-http://your_server_ip_or_hostname
+http://your_instance_public_ip
 ```
 
 The Spring Boot application will be running in the background, and the React frontend will be served by Nginx.
 
 ## Jenkins Integration
 
-To automate the deployment process using Jenkins, follow these steps:
+To automate the deployment process using Jenkins, ensure you have the following:
 
 1. **Create a New Jenkins Job**
 
@@ -133,25 +164,47 @@ To automate the deployment process using Jenkins, follow these steps:
    ```bash
    cd /path/to/your/project
    terraform init
-   terraform apply -auto-approve
-   ansible-playbook -i inventory/hosts deploy.yml
+   terraform apply -auto-approve -var instance_type=${params.INSTANCE_TYPE} -var ami_id=${params.AMI_ID}
+   ansible-playbook -i inventory deploy.yml
    ```
 
 3. **Configure Triggers**
 
    - Set up triggers to run the job on code changes or at scheduled intervals.
 
-## Terraform Setup
+## Ansible Playbook
 
-To manage your infrastructure as code, ensure you have the following:
+The Ansible playbook (`playbook.yml`) automates the configuration of the server and deployment of the application. Key tasks include:
 
-- **Terraform CLI**: Install Terraform on your local machine or CI/CD server.
-- **AWS Credentials**: Configure your AWS credentials to allow Terraform to provision resources.
+- Installing required packages (Java, Nginx, PostgreSQL, etc.).
+- Cloning the Spring Boot application from GitHub.
+- Configuring PostgreSQL with a new database and user.
+- Starting the Spring Boot backend and building the React frontend.
+- Configuring Nginx to serve the React application and proxy requests to the Spring Boot backend.
 
-You can run the following command to verify your Terraform installation:
+## Nginx Configuration
 
-```bash
-terraform version
+The Nginx configuration is templated using Jinja2 (`nginx.conf.j2`). It sets up the server to listen on port 80 and serves the React application while proxying API requests to the Spring Boot backend.
+
+```nginx
+server {
+    listen 80;
+    server_name {{ ansible_host }};  # Use the EC2 public IP
+
+    location / {
+        root /var/www/html/build;  # Path to your React build files
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html;  # Redirect all requests to index.html
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:8080;  # Change this to your Spring Boot backend URL
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
 ## Troubleshooting
