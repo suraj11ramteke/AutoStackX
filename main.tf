@@ -7,15 +7,25 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
+variable "ami_id" {
+  description = "AMI ID for the EC2 instance"
+  default     = "ami-0dee22c13ea7a9a67"  // Default Ubuntu 24.04 Image
+}
+
+variable "key_name" {
+  description = "Key name for the EC2 instance"
+  default     = "devops-practices"
+}
+
 resource "aws_instance" "web" {
-  ami           = "ami-0dee22c13ea7a9a67"  # Ubuntu 24.04 Image
+  ami           = var.ami_id
   instance_type = var.instance_type
 
   tags = {
     Name = "SpringBootReactApp"
   }
 
-  key_name      = "devops-practices"
+  key_name      = var.key_name
   security_groups = [aws_security_group.web_sg.name]
 }
 
