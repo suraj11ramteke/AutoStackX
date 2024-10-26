@@ -1,0 +1,68 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: no
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - openjdk-17-jdk
+          - nginx
+          - postgresql
+          - git
+          - maven
+          - nodejs
+          - npm
+          - unzip  # Ensure unzip is installed
+        update_cache: yes
+        state: present
+
+    - name: Start PostgreSQL service
+      service:
+        name: postgresql
+        state: started
+
+    - name: Create PostgreSQL database and user
+      shell: |
+        sudo -u postgres psql -c "CREATE DATABASE IF NOT EXISTS testdb;"
+        sudo -u postgres psql -c "CREATE USER IF NOT EXISTS testuser WITH PASSWORD 'TestPass123';"
+        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+      ignore_errors: yes  # Ignore errors if the database/user already exists
+
+    - name: Clone Spring Boot app from GitHub
+      git:
+        repo: 'https://github.com/namdeopawar/Simple-SpringBoot-ReactApp.git'
+        dest: /opt/SpringBootReactApp
+        version: main
+    - name: Run the Spring Boot application
+      shell: |
+        java -jar /opt/SpringBootReactApp/artifacts/myapp*.jar &
+      async: 10  # Run the command asynchronously
+      poll: 0    # Don't wait for the command to finish
+
+    - name: Unzip frontend.zip to /var/www/html/myweb/
+      unarchive:
+        src: /opt/SpringBootReactApp/artifacts/frontend.zip
+        dest: /var/www/html/myweb/
+        remote_src: yes  # Indicates that the source file is already on the remote machine
+
+    - name: Configure Nginx
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/myapp
+
+    - name: Enable Nginx configuration
+      command: ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/myapp
+      args:
+        removes: /etc/nginx/sites-enabled/myapp
+
+    - name: Test Nginx configuration
+      command: nginx -t
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+
