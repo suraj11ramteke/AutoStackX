@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'INSTANCE_TYPE', defaultValue: 't3.micro', description: 'Type of EC2 instance')
-        string(name: 'AMI_ID', defaultValue: 'ami-0dee22c13ea7a9a67', description: 'AMI ID for the EC2 instance')
+        string(name: 'INSTANCE_TYPE', defaultValue: 't2.medium', description: 'Type of EC2 instance')
+        string(name: 'AMI_ID', defaultValue: 'ami-0dee22c13ea7a9a67', description: 'AMI ID for the UbuntuEC2 instance')
     }
 
     environment {
