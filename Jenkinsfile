@@ -40,7 +40,7 @@ pipeline {
                 // Update the inventory file with the public IP
                 script {
                     sh "echo '[app_servers]' > inventory"
-                    sh "echo '${env.INSTANCE_PUBLIC_IP} ansible_ssh_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/devops-practices.pem' >> inventory"
+                    sh "echo '${env.INSTANCE_PUBLIC_IP} ansible_ssh_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/devops-practices.pem' >> inventory"
                     sh 'ansible-playbook -i inventory playbook.yml'
                 }
             }
