@@ -3,7 +3,7 @@ server {
     server_name {{ ansible_host }};  # Use the EC2 public IP
 
     location / {
-        root /var/www/html/myweb;  # Path to your React build files
+        root /var/www/html/build;  # Path to your React build files
         index index.html index.htm;
         try_files $uri $uri/ /index.html;  # Redirect all requests to index.html
     }
