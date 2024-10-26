@@ -4,7 +4,7 @@ provider "aws" {
 
 variable "instance_type" {
   description = "Type of EC2 instance"
-  default     = "t3.micro"
+  default     = "t2.medium"
 }
 
 variable "ami_id" {
