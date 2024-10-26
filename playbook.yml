@@ -24,6 +24,11 @@
         dest: /opt/SpringBootReactApp
         version: main
 
+    - name: Verify if frontend directory exists
+      stat:
+        path: /opt/SpringBootReactApp/frontend/package.json
+      register: frontend_exists
+
     - name: Update PostgreSQL database configuration
       lineinfile:
         path: /opt/SpringBootReactApp/backend/src/main/resources/application.properties
@@ -45,27 +50,33 @@
 
     - name: Create PostgreSQL database and user
       shell: |
-        sudo -u postgres psql -c "CREATE DATABASE testdb;"
-        sudo -u postgres psql -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        sudo -u postgres psql -c "CREATE DATABASE IF NOT EXISTS testdb;"
+        sudo -u postgres psql -c "CREATE USER IF NOT EXISTS testuser WITH PASSWORD 'TestPass123';"
         sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+      ignore_errors: yes  # Ignore errors if the database/user already exists
 
     - name: Start Spring Boot backend
       shell: |
         cd /opt/SpringBootReactApp/backend
         ./mvnw spring-boot:run &
+      async: 10  # Run the command asynchronously
+      poll: 0    # Don't wait for the command to finish
 
-    - name: Install frontend dependencies
+    - name: Install frontend dependencies (only if frontend exists)
       shell: |
         cd /opt/SpringBootReactApp/frontend
         npm install
+      when: frontend_exists.stat.exists
 
-    - name: Build React application
+    - name: Build React application (only if frontend exists)
       shell: |
         cd /opt/SpringBootReactApp/frontend
         npm run build
+      when: frontend_exists.stat.exists
 
-    - name: Deploy React frontend
+    - name: Deploy React frontend (only if frontend exists)
       command: cp -r /opt/SpringBootReactApp/frontend/build/* /var/www/html/myweb/
+      when: frontend_exists.stat.exists
 
     - name: Configure Nginx
       template:
