@@ -26,7 +26,7 @@ resource "aws_instance" "web" {
   tags = {
     Name = "SpringBootReactApp"
   }
-
+}
 resource "aws_security_group" "web_sg" {
   name_prefix = "web-sg"
 
