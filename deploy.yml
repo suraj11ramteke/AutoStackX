@@ -30,23 +30,22 @@
         regexp: '^local\s+all\s+postgres\s+peer$'
         line: 'local   all             postgres                                md5'
         state: present
-      notify: Restart PostgreSQL
 
-    - name: Start PostgreSQL service
+    - name: Restart PostgreSQL service to apply authentication changes
       service:
         name: postgresql
-        state: started
+        state: restarted
 
     - name: Create PostgreSQL database and user
       shell: |
         # Check if the database exists; if not, create it
-        psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || psql -U postgres -c "CREATE DATABASE testdb;"
+        /usr/bin/psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || /usr/bin/psql -U postgres -c "CREATE DATABASE testdb;"
         # Check if the user exists; if not, create it
-        psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        /usr/bin/psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || /usr/bin/psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
         # Grant privileges to the user on the database
-        psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+        /usr/bin/psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
       environment:
-        PGPASSWORD: 'Pass123'  # Password for the postgres user
+        PGPASSWORD: 'Pass123'
       ignore_errors: yes
 
     - name: Add PostgreSQL user authentication method
@@ -54,13 +53,11 @@
         path: /etc/postgresql/16/main/pg_hba.conf
         line: "local   all             testuser                                md5"
         state: present
-        validate: 'pg_ctl -D /etc/postgresql/16/main -t 10 -W reload %s'
-      notify: Restart PostgreSQL
 
-    - name: Restart PostgreSQL service
-      service:
-        name: postgresql
-        state: restarted
+    - name: Reload PostgreSQL configuration
+      shell: |
+        /usr/lib/postgresql/16/bin/pg_ctl -D /etc/postgresql/16/main reload
+      ignore_errors: yes
 
     - name: Clone Spring Boot app from GitHub
       git:
@@ -91,10 +88,4 @@
     - name: Restart Nginx
       service:
         name: nginx
-        state: restarted
-
-  handlers:
-    - name: Restart PostgreSQL
-      service:
-        name: postgresql
         state: restarted
