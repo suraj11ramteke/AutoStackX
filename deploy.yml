@@ -31,6 +31,18 @@
         sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
       ignore_errors: yes  # Ignore errors if the database/user already exists
 
+    - name: Add PostgreSQL user authentication method
+      lineinfile:
+        path: /etc/postgresql/16/main/pg_hba.conf
+        line: "local   all             testuser                                md5"
+        state: present
+        validate: 'pg_ctl -D /etc/postgresql/16/main -t 10 -W reload'  # Validate the configuration before applying
+
+    - name: Restart PostgreSQL service
+      service:
+        name: postgresql
+        state: restarted
+
     - name: Clone Spring Boot app from GitHub
       git:
         repo: 'https://github.com/namdeopawar/Simple-SpringBoot-ReactApp.git'
