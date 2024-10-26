@@ -23,62 +23,51 @@
       retries: 3
       delay: 10
 
-    - name: Configure PostgreSQL for password authentication
-      lineinfile:
-        path: /etc/postgresql/16/main/pg_hba.conf
-        regexp: '^local\s+all\s+postgres\s+peer$'
-        line: 'local   all             postgres                                md5'
-        state: present
-      notify: Restart PostgreSQL
-
-    - name: Start PostgreSQL service
-      service:
-        name: postgresql
-        state: started
-
     - name: Create PostgreSQL database and user
       shell: |
-        PGPASSWORD='Pass123' psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || PGPASSWORD='Pass123' psql -U postgres -c "CREATE DATABASE testdb;"
-        PGPASSWORD='Pass123' psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || PGPASSWORD='Pass123' psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
-        PGPASSWORD='Pass123' psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
-      ignore_errors: yes
+        sudo -u postgres psql -c "CREATE DATABASE IF NOT EXISTS testdb;"
+        sudo -u postgres psql -c "CREATE USER IF NOT EXISTS testuser WITH PASSWORD 'TestPass123';"
+        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+      ignore_errors: yes  # Ignore errors if the database/user already exists
 
     - name: Add PostgreSQL user authentication method
       lineinfile:
         path: /etc/postgresql/16/main/pg_hba.conf
         line: "local   all             testuser                                md5"
         state: present
-        validate: 'pg_ctl -D /etc/postgresql/16/main -t 10 -W reload %s'
-      notify: Restart PostgreSQL
+        validate: 'pg_ctl -D /etc/postgresql/16/main -t 10 -W reload'  # Validate the configuration before applying
 
     - name: Restart PostgreSQL service
       service:
         name: postgresql
         state: restarted
-      when: ansible_facts.services['postgresql'].state != 'running'
-      
+
     - name: Clone Spring Boot app from GitHub
       git:
         repo: 'https://github.com/namdeopawar/Simple-SpringBoot-ReactApp.git'
         dest: /opt/SpringBootReactApp
         version: main
-
     - name: Run the Spring Boot application
       shell: |
         java -jar /opt/SpringBootReactApp/artifacts/myapp*.jar &
-      async: 10
-      poll: 0
+      async: 10  # Run the command asynchronously
+      poll: 0    # Don't wait for the command to finish
 
     - name: Unzip frontend.zip to /var/www/html/myweb/
       unarchive:
         src: /opt/SpringBootReactApp/artifacts/frontend.zip
         dest: /var/www/html/myweb/
-        remote_src: yes
+        remote_src: yes  # Indicates that the source file is already on the remote machine
 
     - name: Configure Nginx
       template:
         src: nginx.conf.j2
         dest: /etc/nginx/sites-available/default
+
+    #- name: Enable Nginx configuration
+    #  command: ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/myapp
+    #  args:
+    #    removes: /etc/nginx/sites-enabled/myapp
 
     - name: Test Nginx configuration
       command: nginx -t
@@ -86,10 +75,4 @@
     - name: Restart Nginx
       service:
         name: nginx
-        state: restarted
-
-  handlers:
-    - name: Restart PostgreSQL
-      service:
-        name: postgresql
         state: restarted
