@@ -37,16 +37,10 @@
         state: restarted
 
     - name: Create PostgreSQL database and user
-      become_user: postgres
       shell: |
-        # Check if the database exists; if not, create it
-        /usr/bin/psql -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || /usr/bin/psql -c "CREATE DATABASE testdb;"
-        # Check if the user exists; if not, create it
-        /usr/bin/psql -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || /usr/bin/psql -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
-        # Grant privileges to the user on the database
-        /usr/bin/psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
-      environment:
-        PGPASSWORD: 'Pass123'
+        sudo -u postgres /usr/bin/psql -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || sudo -u postgres /usr/bin/psql -c "CREATE DATABASE testdb;"
+        sudo -u postgres /usr/bin/psql -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || sudo -u postgres /usr/bin/psql -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        sudo -u postgres /usr/bin/psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
       ignore_errors: yes
 
     - name: Add PostgreSQL user authentication method
@@ -72,7 +66,7 @@
       async: 10
       poll: 0
 
-    - name: Unzip frontend.zip to /var/www/html/
+    - name: Unzip frontend.zip to /var/www/html/myweb/
       unarchive:
         src: /opt/SpringBootReactApp/artifacts/frontend.zip
         dest: /var/www/html
