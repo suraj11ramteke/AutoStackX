@@ -18,7 +18,10 @@
           - zip
         update_cache: yes
         state: present
-
+      retries: 3
+      delay: 10  # Waits 10 seconds between retries
+      until: apt is succeeded
+      
     - name: Start PostgreSQL service
       service:
         name: postgresql
