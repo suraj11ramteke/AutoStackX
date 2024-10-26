@@ -37,13 +37,14 @@
         state: restarted
 
     - name: Create PostgreSQL database and user
+      become_user: postgres
       shell: |
         # Check if the database exists; if not, create it
-        /usr/bin/psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || /usr/bin/psql -U postgres -c "CREATE DATABASE testdb;"
+        /usr/bin/psql -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || /usr/bin/psql -c "CREATE DATABASE testdb;"
         # Check if the user exists; if not, create it
-        /usr/bin/psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || /usr/bin/psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        /usr/bin/psql -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || /usr/bin/psql -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
         # Grant privileges to the user on the database
-        /usr/bin/psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+        /usr/bin/psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
       environment:
         PGPASSWORD: 'Pass123'
       ignore_errors: yes
@@ -54,10 +55,10 @@
         line: "local   all             testuser                                md5"
         state: present
 
-    - name: Reload PostgreSQL configuration
-      shell: |
-        /usr/lib/postgresql/16/bin/pg_ctl -D /etc/postgresql/16/main reload
-      ignore_errors: yes
+    - name: Restart PostgreSQL to apply new user configuration
+      service:
+        name: postgresql
+        state: restarted
 
     - name: Clone Spring Boot app from GitHub
       git:
