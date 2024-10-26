@@ -63,12 +63,12 @@
     - name: Configure Nginx
       template:
         src: nginx.conf.j2
-        dest: /etc/nginx/sites-available/myapp
+        dest: /etc/nginx/sites-available/default
 
-    - name: Enable Nginx configuration
-      command: ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/myapp
-      args:
-        removes: /etc/nginx/sites-enabled/myapp
+    #- name: Enable Nginx configuration
+    #  command: ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/myapp
+    #  args:
+    #    removes: /etc/nginx/sites-enabled/myapp
 
     - name: Test Nginx configuration
       command: nginx -t
