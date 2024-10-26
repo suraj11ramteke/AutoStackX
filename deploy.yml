@@ -18,10 +18,11 @@
           - zip
         update_cache: yes
         state: present
+      register: apt_result
+      until: apt_result is succeeded
       retries: 3
       delay: 10  # Waits 10 seconds between retries
-      until: apt is succeeded
-      
+
     - name: Start PostgreSQL service
       service:
         name: postgresql
@@ -29,9 +30,11 @@
 
     - name: Create PostgreSQL database and user
       shell: |
-        sudo -u postgres psql -c "CREATE DATABASE IF NOT EXISTS testdb;"
-        sudo -u postgres psql -c "CREATE USER IF NOT EXISTS testuser WITH PASSWORD 'TestPass123';"
-        sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+        psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || psql -U postgres -c "CREATE DATABASE testdb;"
+        psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+      environment:
+        PGPASSWORD: "postgres_password"  # replace with actual PostgreSQL password if necessary
       ignore_errors: yes  # Ignore errors if the database/user already exists
 
     - name: Add PostgreSQL user authentication method
@@ -51,27 +54,23 @@
         repo: 'https://github.com/namdeopawar/Simple-SpringBoot-ReactApp.git'
         dest: /opt/SpringBootReactApp
         version: main
+
     - name: Run the Spring Boot application
       shell: |
         java -jar /opt/SpringBootReactApp/artifacts/myapp*.jar &
-      async: 10  # Run the command asynchronously
-      poll: 0    # Don't wait for the command to finish
+      async: 10
+      poll: 0
 
     - name: Unzip frontend.zip to /var/www/html/myweb/
       unarchive:
         src: /opt/SpringBootReactApp/artifacts/frontend.zip
         dest: /var/www/html/myweb/
-        remote_src: yes  # Indicates that the source file is already on the remote machine
+        remote_src: yes
 
     - name: Configure Nginx
       template:
         src: nginx.conf.j2
         dest: /etc/nginx/sites-available/default
-
-    #- name: Enable Nginx configuration
-    #  command: ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/myapp
-    #  args:
-    #    removes: /etc/nginx/sites-enabled/myapp
 
     - name: Test Nginx configuration
       command: nginx -t
@@ -80,4 +79,3 @@
       service:
         name: nginx
         state: restarted
-
