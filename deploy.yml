@@ -15,7 +15,7 @@
           - maven
           - nodejs
           - npm
-          - unzip  # Ensure unzip is installed
+          - zip
         update_cache: yes
         state: present
 
