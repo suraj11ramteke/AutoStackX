@@ -21,7 +21,15 @@
       register: apt_result
       until: apt_result is succeeded
       retries: 3
-      delay: 10  # Waits 10 seconds between retries
+      delay: 10
+
+    - name: Configure PostgreSQL for password authentication
+      lineinfile:
+        path: /etc/postgresql/16/main/pg_hba.conf
+        regexp: '^local\s+all\s+postgres\s+peer$'
+        line: 'local   all             postgres                                md5'
+        state: present
+      notify: Restart PostgreSQL
 
     - name: Start PostgreSQL service
       service:
@@ -30,25 +38,25 @@
 
     - name: Create PostgreSQL database and user
       shell: |
-        psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || psql -U postgres -c "CREATE DATABASE testdb;"
-        psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
-        psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
-      environment:
-        PGPASSWORD: "postgres_password"  # replace with actual PostgreSQL password if necessary
-      ignore_errors: yes  # Ignore errors if the database/user already exists
+        PGPASSWORD='Pass123' psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'testdb'" | grep -q 1 || PGPASSWORD='Pass123' psql -U postgres -c "CREATE DATABASE testdb;"
+        PGPASSWORD='Pass123' psql -U postgres -tc "SELECT 1 FROM pg_roles WHERE rolname = 'testuser'" | grep -q 1 || PGPASSWORD='Pass123' psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'TestPass123';"
+        PGPASSWORD='Pass123' psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;"
+      ignore_errors: yes
 
     - name: Add PostgreSQL user authentication method
       lineinfile:
         path: /etc/postgresql/16/main/pg_hba.conf
         line: "local   all             testuser                                md5"
         state: present
-        validate: 'pg_ctl -D /etc/postgresql/16/main -t 10 -W reload'  # Validate the configuration before applying
+        validate: 'pg_ctl -D /etc/postgresql/16/main -t 10 -W reload %s'
+      notify: Restart PostgreSQL
 
     - name: Restart PostgreSQL service
       service:
         name: postgresql
         state: restarted
-
+      when: ansible_facts.services['postgresql'].state != 'running'
+      
     - name: Clone Spring Boot app from GitHub
       git:
         repo: 'https://github.com/namdeopawar/Simple-SpringBoot-ReactApp.git'
@@ -78,4 +86,10 @@
     - name: Restart Nginx
       service:
         name: nginx
+        state: restarted
+
+  handlers:
+    - name: Restart PostgreSQL
+      service:
+        name: postgresql
         state: restarted
