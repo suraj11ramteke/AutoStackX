@@ -26,7 +26,7 @@ pipeline {
             steps {
                 script {
                     sh 'cat instance_ip.txt'
-                    sh 'sudo sh inventory.sh'
+                    sh './inventory.sh'
                     ansiblePlaybook(
                         playbook: 'playbook.yml',
                         inventory: 'hosts.ini'
