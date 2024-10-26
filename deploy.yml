@@ -74,7 +74,7 @@
     - name: Unzip frontend.zip to /var/www/html/myweb/
       unarchive:
         src: /opt/SpringBootReactApp/artifacts/frontend.zip
-        dest: /var/www/html/myweb/
+        dest: /var/www/html
         remote_src: yes
 
     - name: Configure Nginx
