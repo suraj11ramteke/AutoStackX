@@ -72,7 +72,7 @@
       async: 10
       poll: 0
 
-    - name: Unzip frontend.zip to /var/www/html/myweb/
+    - name: Unzip frontend.zip to /var/www/html/
       unarchive:
         src: /opt/SpringBootReactApp/artifacts/frontend.zip
         dest: /var/www/html
