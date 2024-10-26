@@ -17,6 +17,7 @@ pipeline {
                     // Pass instance_type and ami_id as parameters
                     sh 'terraform init'
                     sh "terraform apply -auto-approve -var \"instance_type=${params.INSTANCE_TYPE}\" -var \"ami_id=${params.AMI_ID}\""
+                    sh 'terraform output instance_ip > instance_ip.txt'
                 }
             }
         }
@@ -24,6 +25,8 @@ pipeline {
         stage('Ansible Provisioning') {
             steps {
                 script {
+                    sh 'cat instance_ip.txt'
+                    sh './inventory.sh'
                     ansiblePlaybook(
                         playbook: 'playbook.yml',
                         inventory: 'hosts.ini'
