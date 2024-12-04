@@ -1,4 +1,4 @@
-# Spring Boot and React Application Deployment with Jenkins, Ansible, and Terraform
+## Spring Boot and React Application Deployment with Jenkins, Ansible, and Terraform
 
 ## Overview
 
